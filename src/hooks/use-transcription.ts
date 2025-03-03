@@ -29,6 +29,10 @@ export function useTranscription() {
   const { toast } = useToast()
 
   const loadFFmpeg = async () => {
+    if (!ffmpeg) {
+      throw new Error('FFmpeg not initialized')
+    }
+
     if (isFFmpegLoaded) return
 
     try {
@@ -50,6 +54,10 @@ export function useTranscription() {
   }
 
   const checkAudioStream = async (file: File) => {
+    if (!ffmpeg) {
+      throw new Error('FFmpeg not initialized')
+    }
+
     await loadFFmpeg()
     
     const inputFileName = 'check.' + file.name.split('.').pop()
