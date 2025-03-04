@@ -74,11 +74,11 @@ export function Uploader() {
       </div>
 
       {file && (
-        <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-4">
-            <File className="h-8 w-8 text-blue-500" />
-            <div>
-              <p className="font-medium">{file.name}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-900 gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            <File className="h-8 w-8 flex-shrink-0 text-blue-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate">{file.name}</p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>{formatBytes(file.size)}</p>
                 <p>预估费用：{formatPrice(estimatedPrice, currency)}</p>
@@ -88,12 +88,12 @@ export function Uploader() {
           <button
             onClick={handleTranscribe}
             disabled={isLoading}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
-                转录中 {progress}%
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>转录中 {progress}%</span>
               </>
             ) : (
               "开始转录"
