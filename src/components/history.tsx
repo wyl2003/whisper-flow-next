@@ -120,33 +120,37 @@ export function History() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">转录历史</h2>
+      <h2 className="text-lg font-semibold px-4 sm:px-0">转录历史</h2>
       <div className="space-y-4">
         {history.map((item) => (
           <div
             key={item.id}
-            className="p-4 rounded-lg border bg-card space-y-4"
+            className="p-4 border-b sm:border sm:rounded-lg bg-card space-y-4"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex flex-col gap-1">
-                  <div className="text-sm font-medium">{item.filename}</div>
-                  <div className="text-xs text-gray-500">
-                    {formatBytes(item.file_size)} • {formatDuration(item.duration)} • {languages[item.language as keyof typeof languages] || item.language}
-                  </div>
-                  <div className="text-xs text-gray-500">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium truncate flex-1">{item.filename}</div>
+                  <div className="text-xs text-muted-foreground whitespace-nowrap">
                     费用: {formatPrice(item.actualPrice || 0, currency)}
                   </div>
                 </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span>{formatBytes(item.file_size)}</span>
+                  <span>•</span>
+                  <span>{formatDuration(item.duration)}</span>
+                  <span>•</span>
+                  <span>{languages[item.language as keyof typeof languages] || item.language}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Select
                   value={exportFormats[item.id] || item.format || "text"}
                   onValueChange={(value) =>
                     setExportFormats((prev) => ({ ...prev, [item.id]: value }))
                   }
                 >
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="h-8 w-[120px] sm:w-[140px]">
                     <SelectValue placeholder="选择格式" />
                   </SelectTrigger>
                   <SelectContent>
@@ -157,37 +161,39 @@ export function History() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => downloadTranscription(item)}
-                  className="h-8 w-8"
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => copyToClipboard(item.text, item.id)}
-                  className="h-8 w-8"
-                >
-                  {copiedId === item.id ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => removeFromHistory(item.id)}
-                  className="h-8 w-8"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => downloadTranscription(item)}
+                    className="h-8 w-8"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(item.text, item.id)}
+                    className="h-8 w-8"
+                  >
+                    {copiedId === item.id ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => removeFromHistory(item.id)}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="text-sm">
+            <div className="text-sm break-words whitespace-pre-wrap max-h-32 overflow-y-auto border rounded-md p-2 bg-muted/10">
               <p>{item.text}</p>
             </div>
           </div>
