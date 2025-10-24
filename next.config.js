@@ -4,7 +4,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/_next/static/media/:path*\\.worker\\.ts',
+        source: '/_next/static/media/:path*.worker.ts',
         headers: [
           {
             key: 'Content-Type',
