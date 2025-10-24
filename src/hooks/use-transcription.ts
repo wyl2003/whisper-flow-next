@@ -7,6 +7,7 @@ import { useTranscriptionStore } from '@/store/transcription-store'
 import { useToast } from '@/components/ui/use-toast'
 
 const WEBGPU_SAMPLE_RATE = 16000
+const WEBGPU_WORKER_URL = '/workers/webgpu-transcriber.worker.js'
 
 interface WebgpuWorkerChunk {
 	text: string
@@ -255,19 +256,8 @@ export function useTranscription() {
 
 		if (!workerRef.current) {
 			try {
-				if (typeof URL !== 'undefined') {
-					const urlProto = URL.prototype as URL & {
-						replace?: (pattern: Parameters<string['replace']>[0], replacement: Parameters<string['replace']>[1]) => string
-					}
-					if (typeof urlProto.replace !== 'function') {
-						urlProto.replace = function (pattern, replacement) {
-							return this.toString().replace(pattern as never, replacement as never)
-						}
-					}
-				}
 
-				const workerUrl = new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url)
-				const worker = new Worker(workerUrl, { type: 'module' })
+				const worker = new Worker(WEBGPU_WORKER_URL, { type: 'module' })
 				worker.addEventListener('message', handleWorkerMessage)
 				worker.addEventListener('error', (event) => {
 					console.error('WebGPU worker error:', event)
