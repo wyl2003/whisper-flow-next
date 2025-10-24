@@ -6,6 +6,11 @@ const nextConfig = {
       ...config.resolve.fallback,
       fs: false,
     }
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'onnxruntime-node': false,
+    }
     return config
   },
 }

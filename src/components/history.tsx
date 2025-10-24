@@ -7,6 +7,7 @@ import { formatBytes } from "@/lib/format-bytes"
 import { formatDuration } from "@/lib/format-duration"
 import { formatPrice } from "@/lib/calculate-price"
 import { useTranscriptionStore } from "@/store/transcription-store"
+import type { TranscriptionResult } from "@/store/transcription-store"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import {
@@ -44,6 +45,11 @@ const outputFormats = [
   { value: "vtt", label: "VTT 字幕" },
   { value: "json", label: "JSON" },
 ]
+
+const modeLabels = {
+  api: "云端 API",
+  webgpu: "本地 WebGPU",
+}
 
 export function History() {
   const {
@@ -122,7 +128,7 @@ export function History() {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold px-4 sm:px-0">转录历史</h2>
       <div className="space-y-4">
-        {history.map((item) => (
+  {history.map((item: TranscriptionResult) => (
           <div
             key={item.id}
             className="p-4 border-b sm:border sm:rounded-lg bg-card space-y-4"
@@ -132,7 +138,9 @@ export function History() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium truncate flex-1">{item.filename}</div>
                   <div className="text-xs text-muted-foreground whitespace-nowrap">
-                    费用: {formatPrice(item.actualPrice || 0, currency)}
+                    {(item.mode ?? 'api') === 'api'
+                      ? `费用: ${formatPrice(item.actualPrice || 0, currency)}`
+                      : '费用: 本地运行（0）'}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -141,6 +149,18 @@ export function History() {
                   <span>{formatDuration(item.duration)}</span>
                   <span>•</span>
                   <span>{languages[item.language as keyof typeof languages] || item.language}</span>
+                  {modeLabels[(item.mode ?? 'api') as keyof typeof modeLabels] && (
+                    <>
+                      <span>•</span>
+                      <span>{modeLabels[(item.mode ?? 'api') as keyof typeof modeLabels]}</span>
+                    </>
+                  )}
+                  {item.metadata?.model && (
+                    <>
+                      <span>•</span>
+                      <span>{item.metadata.model}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">

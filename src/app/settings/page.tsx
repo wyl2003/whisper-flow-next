@@ -26,6 +26,7 @@ export default function SettingsPage() {
     setPricePerMinute,
     currency,
     setCurrency,
+    transcriptionMode,
   } = useTranscriptionStore()
   const { toast } = useToast()
 
@@ -46,6 +47,10 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          当前转录模式：{transcriptionMode === 'webgpu' ? '本地 WebGPU（浏览器内推理，无需 API）' : '云端 API（需要有效的 API Key）'}
+        </p>
+
         <div className="space-y-2">
           <Label htmlFor="apiKey">API 密钥</Label>
           <Input

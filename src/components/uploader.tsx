@@ -13,7 +13,7 @@ export function Uploader() {
   const [file, setFile] = useState<File | null>(null)
   const { transcribe, isLoading, progress } = useTranscription()
   const { toast } = useToast()
-  const { pricePerMinute, currency } = useTranscriptionStore()
+  const { pricePerMinute, currency, transcriptionMode } = useTranscriptionStore()
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -42,7 +42,7 @@ export function Uploader() {
     }
   }
 
-  const estimatedPrice = file ? estimatePrice(file.size, pricePerMinute) : 0
+  const estimatedPrice = file && transcriptionMode === 'api' ? estimatePrice(file.size, pricePerMinute) : 0
 
   return (
     <div className="space-y-4">
@@ -81,7 +81,11 @@ export function Uploader() {
               <p className="font-medium truncate">{file.name}</p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>{formatBytes(file.size)}</p>
-                <p>预估费用：{formatPrice(estimatedPrice, currency)}</p>
+                {transcriptionMode === 'api' ? (
+                  <p>预估费用：{formatPrice(estimatedPrice, currency)}</p>
+                ) : (
+                  <p>本地 WebGPU 转录，无需 API 费用</p>
+                )}
               </div>
             </div>
           </div>
