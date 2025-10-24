@@ -255,21 +255,19 @@ export function useTranscription() {
 
 		if (!workerRef.current) {
 			try {
-				const createWorkerScriptReference = () => {
-					const workerUrl = new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url)
-					const resolved = workerUrl.toString().replace(/\.ts(?=$|\?)/, '.js')
-
-					const wrapper = {
-						toString: () => resolved,
-						valueOf: () => resolved,
-						[Symbol.toPrimitive]: () => resolved,
-						replace: (...args: Parameters<string['replace']>) => resolved.replace(...args),
+				if (typeof URL !== 'undefined') {
+					const urlProto = URL.prototype as URL & {
+						replace?: (pattern: Parameters<string['replace']>[0], replacement: Parameters<string['replace']>[1]) => string
 					}
-
-					return wrapper as unknown as string
+					if (typeof urlProto.replace !== 'function') {
+						urlProto.replace = function (pattern, replacement) {
+							return this.toString().replace(pattern as never, replacement as never)
+						}
+					}
 				}
 
-				const worker = new Worker(createWorkerScriptReference(), { type: 'module' })
+				const workerUrl = new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url)
+				const worker = new Worker(workerUrl, { type: 'module' })
 				worker.addEventListener('message', handleWorkerMessage)
 				worker.addEventListener('error', (event) => {
 					console.error('WebGPU worker error:', event)

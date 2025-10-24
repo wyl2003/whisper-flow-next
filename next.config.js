@@ -1,6 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/_next/static/media/:path*\\.worker\\.ts',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/javascript; charset=utf-8',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+    ]
+  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
