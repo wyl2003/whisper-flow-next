@@ -11,6 +11,17 @@ const nextConfig = {
       ...config.resolve.alias,
       'onnxruntime-node': false,
     }
+
+    config.module.rules.push({
+      test: /\.mjs$/,
+      type: 'javascript/auto',
+    })
+
+    config.experiments = {
+      ...config.experiments,
+      topLevelAwait: true,
+    }
+
     return config
   },
 }
