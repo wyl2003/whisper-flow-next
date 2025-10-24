@@ -89,7 +89,7 @@ export function TranscriptionSettings() {
           </SelectContent>
         </Select>
         <p className="text-sm text-muted-foreground">
-          云端 API 需要有效的 API Key，WebGPU 会在浏览器本地执行推理（仅支持支持 WebGPU 的浏览器）
+          云端 API 需要有效的 API Key，WebGPU 会在浏览器本地执行推理（需支持 WebGPU 的浏览器，首次使用会加载模型耗时较长）
         </p>
       </div>
 
