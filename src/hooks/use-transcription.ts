@@ -255,10 +255,21 @@ export function useTranscription() {
 
 		if (!workerRef.current) {
 			try {
-				const worker = new Worker(
-					new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url).href,
-					{ type: 'module' }
-				)
+				const createWorkerScriptReference = () => {
+					const workerUrl = new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url)
+					const resolved = workerUrl.toString().replace(/\.ts(?=$|\?)/, '.js')
+
+					const wrapper = {
+						toString: () => resolved,
+						valueOf: () => resolved,
+						[Symbol.toPrimitive]: () => resolved,
+						replace: (...args: Parameters<string['replace']>) => resolved.replace(...args),
+					}
+
+					return wrapper as unknown as string
+				}
+
+				const worker = new Worker(createWorkerScriptReference(), { type: 'module' })
 				worker.addEventListener('message', handleWorkerMessage)
 				worker.addEventListener('error', (event) => {
 					console.error('WebGPU worker error:', event)
@@ -332,7 +343,18 @@ export function useTranscription() {
 				'output.mp3',
 			])
 			const outputData = await ffmpeg.readFile('output.mp3')
-			return new File([outputData], 'audio.mp3', { type: 'audio/mpeg' })
+			const bufferView =
+				outputData instanceof Uint8Array
+					? outputData
+					: typeof outputData === 'string'
+						? new TextEncoder().encode(outputData)
+						: new Uint8Array(outputData as unknown as ArrayBufferLike)
+			const arrayBuffer = bufferView.buffer.slice(
+				bufferView.byteOffset,
+				bufferView.byteOffset + bufferView.byteLength
+			) as ArrayBuffer
+			const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
+			return new File([blob], 'audio.mp3', { type: 'audio/mpeg' })
 		} catch (error) {
 			console.error('音频转码失败:', error)
 			throw error
