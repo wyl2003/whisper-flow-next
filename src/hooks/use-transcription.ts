@@ -256,7 +256,7 @@ export function useTranscription() {
 		if (!workerRef.current) {
 			try {
 				const worker = new Worker(
-					new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url),
+					new URL('../workers/webgpu-transcriber.worker.ts', import.meta.url).href,
 					{ type: 'module' }
 				)
 				worker.addEventListener('message', handleWorkerMessage)
