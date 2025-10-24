@@ -40,8 +40,22 @@ const outputFormats = [
   { value: "json", label: "JSON (包含详细信息)" },
 ]
 
+const transcriptionModes = [
+  { value: "api", label: "云端 API" },
+  { value: "webgpu", label: "本地 WebGPU" },
+]
+
+const webgpuModels = [
+  { value: "onnx-community/whisper-tiny", label: "Whisper Tiny (~120MB)" },
+  { value: "onnx-community/whisper-base", label: "Whisper Base (~206MB)" },
+  { value: "onnx-community/whisper-small", label: "Whisper Small (~586MB)" },
+  { value: "onnx-community/whisper-large-v3-turbo", label: "Whisper Large v3 Turbo (~1.6GB)" },
+]
+
 export function TranscriptionSettings() {
   const {
+    transcriptionMode,
+    setTranscriptionMode,
     language,
     setLanguage,
     outputFormat,
@@ -52,11 +66,53 @@ export function TranscriptionSettings() {
     setPrompt,
     wordTimestamps,
     setWordTimestamps,
+    webgpuModel,
+    setWebgpuModel,
   } = useTranscriptionStore()
 
   return (
     <div className="space-y-4 p-4 rounded-lg border bg-card">
       <h2 className="text-lg font-semibold">转录设置</h2>
+
+      <div className="space-y-2">
+        <Label htmlFor="mode">转录模式</Label>
+        <Select value={transcriptionMode} onValueChange={setTranscriptionMode}>
+          <SelectTrigger>
+            <SelectValue placeholder="选择转录模式" />
+          </SelectTrigger>
+          <SelectContent>
+            {transcriptionModes.map((mode) => (
+              <SelectItem key={mode.value} value={mode.value}>
+                {mode.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          云端 API 需要有效的 API Key，WebGPU 会在浏览器本地执行推理（需支持 WebGPU 的浏览器，首次使用会加载模型耗时较长）
+        </p>
+      </div>
+
+      {transcriptionMode === 'webgpu' && (
+        <div className="space-y-2">
+          <Label htmlFor="webgpuModel">WebGPU 模型</Label>
+          <Select value={webgpuModel} onValueChange={setWebgpuModel}>
+            <SelectTrigger>
+              <SelectValue placeholder="选择模型" />
+            </SelectTrigger>
+            <SelectContent>
+              {webgpuModels.map((model) => (
+                <SelectItem key={model.value} value={model.value}>
+                  {model.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            模型越大准确率越高，但加载和推理速度也会越慢
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="language">语言</Label>
@@ -128,14 +184,16 @@ export function TranscriptionSettings() {
         <div className="space-y-0.5">
           <Label htmlFor="wordTimestamps">词级时间戳</Label>
           <p className="text-sm text-muted-foreground">
-            为每个单词生成时间戳（仅在选择 JSON 格式时可用）
+            {transcriptionMode === 'webgpu'
+              ? 'WebGPU 模式暂不支持词级时间戳'
+              : '为每个单词生成时间戳（仅在选择 JSON 格式时可用）'}
           </p>
         </div>
         <Switch
           id="wordTimestamps"
           checked={wordTimestamps}
           onCheckedChange={setWordTimestamps}
-          disabled={outputFormat !== "json"}
+          disabled={outputFormat !== "json" || transcriptionMode === 'webgpu'}
         />
       </div>
     </div>

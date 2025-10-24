@@ -25,6 +25,8 @@ export type Language =
 
 export type OutputFormat = "text" | "srt" | "vtt" | "json"
 
+export type TranscriptionMode = 'api' | 'webgpu'
+
 export interface TranscriptionResult {
   id: string
   filename: string
@@ -41,6 +43,11 @@ export interface TranscriptionResult {
   created_at: string
   format: string
   actualPrice: number
+  mode: TranscriptionMode
+  metadata?: {
+    model?: string
+    tps?: number
+  }
 }
 
 interface TranscriptionStore {
@@ -53,6 +60,12 @@ interface TranscriptionStore {
   setPricePerMinute: (price: number) => void
   currency: string
   setCurrency: (currency: string) => void
+
+  // 模式设置
+  transcriptionMode: TranscriptionMode
+  setTranscriptionMode: (mode: TranscriptionMode) => void
+  webgpuModel: string
+  setWebgpuModel: (model: string) => void
 
   // 转录设置
   language: string
@@ -79,47 +92,62 @@ interface TranscriptionStore {
 
 export const useTranscriptionStore = create<TranscriptionStore>()(
   persist(
-    (set) => ({
+    (
+      set: (
+        partial:
+          | TranscriptionStore
+          | Partial<TranscriptionStore>
+          | ((state: TranscriptionStore) => TranscriptionStore | Partial<TranscriptionStore>),
+        replace?: boolean,
+        action?: string
+      ) => void
+    ) => ({
       // API 设置
       apiKey: "",
-      setApiKey: (key) => set({ apiKey: key }),
+      setApiKey: (key: string) => set({ apiKey: key }),
       apiEndpoint: "https://api.openai.com/v1/audio/transcriptions",
-      setApiEndpoint: (endpoint) => set({ apiEndpoint: endpoint }),
+      setApiEndpoint: (endpoint: string) => set({ apiEndpoint: endpoint }),
       pricePerMinute: 0.006,
-      setPricePerMinute: (price) => set({ pricePerMinute: price }),
+      setPricePerMinute: (price: number) => set({ pricePerMinute: price }),
       currency: "USD",
-      setCurrency: (currency) => set({ currency: currency }),
+      setCurrency: (currency: string) => set({ currency }),
+
+      // 模式设置
+      transcriptionMode: 'api',
+      setTranscriptionMode: (mode: TranscriptionMode) => set({ transcriptionMode: mode }),
+      webgpuModel: 'onnx-community/whisper-base',
+      setWebgpuModel: (model: string) => set({ webgpuModel: model }),
 
       // 转录设置
       language: "auto",
-      setLanguage: (language) => set({ language }),
+      setLanguage: (language: string) => set({ language }),
       outputFormat: "text",
-      setOutputFormat: (format) => set({ outputFormat: format }),
+      setOutputFormat: (format: string) => set({ outputFormat: format }),
       temperature: 0,
-      setTemperature: (temperature) => set({ temperature }),
+      setTemperature: (temperature: number) => set({ temperature }),
       prompt: "",
-      setPrompt: (prompt) => set({ prompt }),
+      setPrompt: (prompt: string) => set({ prompt }),
       wordTimestamps: false,
-      setWordTimestamps: (enabled) => set({ wordTimestamps: enabled }),
+      setWordTimestamps: (enabled: boolean) => set({ wordTimestamps: enabled }),
 
       // 历史记录
       history: [],
-      addToHistory: (result) =>
-        set((state) => ({
+      addToHistory: (result: TranscriptionResult) =>
+        set((state: TranscriptionStore) => ({
           history: [result, ...state.history],
         })),
-      removeFromHistory: (id) =>
-        set((state) => ({
-          history: state.history.filter((item) => item.id !== id),
+      removeFromHistory: (id: string) =>
+        set((state: TranscriptionStore) => ({
+          history: state.history.filter((item: TranscriptionResult) => item.id !== id),
         })),
       clearHistory: () => set({ history: [] }),
 
       // 导出设置
       exportFormat: "text",
-      setExportFormat: (format) => set({ exportFormat: format }),
+      setExportFormat: (format: OutputFormat) => set({ exportFormat: format }),
     }),
     {
       name: 'transcription-store',
     }
   )
-) 
+)
