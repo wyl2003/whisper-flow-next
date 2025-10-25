@@ -113,7 +113,7 @@ export const useTranscriptionStore = create<TranscriptionStore>()(
       setCurrency: (currency: string) => set({ currency }),
 
       // 模式设置
-      transcriptionMode: 'api',
+      transcriptionMode: 'webgpu',
       setTranscriptionMode: (mode: TranscriptionMode) => set({ transcriptionMode: mode }),
       webgpuModel: 'onnx-community/whisper-base',
       setWebgpuModel: (model: string) => set({ webgpuModel: model }),

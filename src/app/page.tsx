@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="container py-8 px-0 sm:px-4 space-y-8">
       <div className="flex items-center justify-between px-4 sm:px-0">
-        <h1 className="text-2xl font-bold">Whisper Flow 语音转文字</h1>
+        <h1 className="text-2xl font-bold">Whisper Flow 免费语音转文字</h1>
         <div className="flex items-center gap-4">
           <Link
             href="https://github.com/wyl2003/whisper-flow-next"
