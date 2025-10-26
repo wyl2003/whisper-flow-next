@@ -1,7 +1,7 @@
 # Whisper Flow
 
 一个现代化的在线音视频转文字NEXT应用，使用 OpenAI 的 Whisper 模型在浏览器端进行准确的语音识别。
-点击直接开始使用 [https://whisper.wyls.top/]()
+点击直接开始使用 [https://whisper.wyls.top/]([https://whisper.wyls.top/]())
 
 ## 主要特性
 
