@@ -1,7 +1,7 @@
 # Whisper Flow
 
 一个现代化的在线音视频转文字NEXT应用，使用 OpenAI 的 Whisper 模型在浏览器端进行准确的语音识别。
-点击直接开始使用 [https://whisper.wyls.top/]([https://whisper.wyls.top/]())
+直接开始使用 [whisper.wyls.top](https://whisper.wyls.top/)
 
 ## 主要特性
 
@@ -39,6 +39,7 @@ npm run dev
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/wyl2003/whisper-flow)
 [![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wyl2003/whisper-flow)
 
+查看效果: [whisper-flow.vercel.app](https://whisper-flow.vercel.app/)
 ## 环境变量
 
 ```env
