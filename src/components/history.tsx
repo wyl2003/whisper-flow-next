@@ -17,52 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-const languages = {
-  auto: "自动检测",
-  zh: "中文",
-  en: "英文",
-  ja: "日文",
-  ko: "韩文",
-  fr: "法文",
-  de: "德文",
-  es: "西班牙文",
-  ru: "俄文",
-  it: "意大利文",
-  pt: "葡萄牙文",
-  nl: "荷兰文",
-  pl: "波兰文",
-  tr: "土耳其文",
-  ar: "阿拉伯文",
-  th: "泰文",
-  vi: "越南文",
-  hi: "印地文",
-}
-
-const outputFormats = [
-  { value: "text", label: "纯文本" },
-  { value: "srt", label: "SRT 字幕" },
-  { value: "vtt", label: "VTT 字幕" },
-  { value: "json", label: "JSON" },
-]
-
-const modeLabels = {
-  api: "云端 API",
-  webgpu: "本地 WebGPU",
-}
+import { useI18n } from "@/components/i18n-provider"
 
 export function History() {
-  const {
-    history,
-    clearHistory,
-    removeFromHistory,
-    currency,
-  } = useTranscriptionStore()
-  const [exportFormats, setExportFormats] = useState<{ [key: string]: string }>(
-    {}
-  )
+  const { history, removeFromHistory, currency } = useTranscriptionStore()
+  const [exportFormats, setExportFormats] = useState<{ [key: string]: string }>({})
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const { toast } = useToast()
+  const { t, messages } = useI18n()
+  const languageOptions = messages.languageOptions
+  const languageMap = Object.fromEntries(languageOptions.map((option) => [option.value, option.label])) as Record<string, string>
+  const outputFormats = messages.historyOutputFormatOptions
+  const modeLabels = messages.historyModeLabels
 
   const downloadTranscription = (item: any) => {
     const format = exportFormats[item.id] || item.format || "text"
@@ -104,13 +70,13 @@ export function History() {
       await navigator.clipboard.writeText(text)
       setCopiedId(id)
       toast({
-        description: "已复制到剪贴板",
+        description: t("history.copySuccess"),
       })
       setTimeout(() => setCopiedId(null), 2000)
     } catch (err) {
       toast({
-        title: "复制失败",
-        description: "无法访问剪贴板",
+        title: t("history.copyErrorTitle"),
+        description: t("history.copyErrorDescription"),
         variant: "destructive",
       })
     }
@@ -119,14 +85,14 @@ export function History() {
   if (history.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        还没有转录历史记录
+        {t("history.empty")}
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold px-4 sm:px-0">转录历史</h2>
+      <h2 className="text-lg font-semibold px-4 sm:px-0">{t("history.title")}</h2>
       <div className="space-y-4">
   {history.map((item: TranscriptionResult) => (
           <div
@@ -138,9 +104,11 @@ export function History() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium truncate flex-1">{item.filename}</div>
                   <div className="text-xs text-muted-foreground whitespace-nowrap">
-                    {(item.mode ?? 'api') === 'api'
-                      ? `费用: ${formatPrice(item.actualPrice || 0, currency)}`
-                      : '费用: 本地运行（0）'}
+                    {(item.mode ?? "api") === "api"
+                      ? t("history.priceWithValue", {
+                          amount: formatPrice(item.actualPrice || 0, currency),
+                        })
+                      : t("history.priceLocal")}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
@@ -148,11 +116,11 @@ export function History() {
                   <span>•</span>
                   <span>{formatDuration(item.duration)}</span>
                   <span>•</span>
-                  <span>{languages[item.language as keyof typeof languages] || item.language}</span>
-                  {modeLabels[(item.mode ?? 'api') as keyof typeof modeLabels] && (
+                  <span>{languageMap[item.language] || item.language}</span>
+                  {modeLabels[(item.mode ?? "api")] && (
                     <>
                       <span>•</span>
-                      <span>{modeLabels[(item.mode ?? 'api') as keyof typeof modeLabels]}</span>
+                      <span>{modeLabels[item.mode ?? "api"]}</span>
                     </>
                   )}
                   {item.metadata?.model && (
@@ -171,7 +139,7 @@ export function History() {
                   }
                 >
                   <SelectTrigger className="h-8 w-[120px] sm:w-[140px]">
-                    <SelectValue placeholder="选择格式" />
+                    <SelectValue placeholder={t("history.selectFormatPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {outputFormats.map((format) => (
