@@ -1,53 +1,69 @@
-# Whisper Flow
+# Whisper Flow | 语音流
 
-一个现代化的在线音视频转文字NEXT应用，使用 OpenAI 的 Whisper 模型在浏览器端进行准确的语音识别。
-直接开始使用 [whisper.wyls.top](https://whisper.wyls.top/)
+A modern browser-based audio and video transcription app powered by OpenAI Whisper, built with Next.js. Start transcribing instantly at [whisper.wyls.top](https://whisper.wyls.top/).
 
-## 主要特性
+一个现代化的浏览器端音视频转文字应用，基于 OpenAI Whisper 和 Next.js 构建。访问 [whisper.wyls.top](https://whisper.wyls.top/) 立即体验。
 
-- 🎯 支持多种音视频格式浏览器端转换为支持的格式
-- 🔒 支持使用WebGPU在浏览器中本地转录，保护隐私
-- 🌍 支持多语言识别
-- 💾 本地历史记录
-- 📝 多种输出格式（SRT、TXT等）
-- 💰 实时价格估算（使用API转录时）
+## Overview | 项目概览
 
-## 技术栈
+- **Use cases / 使用场景**: Accurate speech-to-text in the browser, no server required.
+- **Privacy / 隐私保护**: WebGPU local transcription keeps your audio on-device.
+- **Multilingual / 多语言支持**: Detects and transcribes multiple languages automatically.
+
+## Key Features | 核心特性
+
+- 🎯 Browser-side format conversion for common audio/video files. 支持常见音视频在浏览器端转换为可识别格式。
+- 🔒 WebGPU-powered on-device transcription for maximum privacy. 支持在浏览器中使用 WebGPU 本地转录，全面保护隐私。
+- 🌍 Automatic language detection across global languages. 自动识别并转录多种语言。
+- 💾 Persistent local history of past transcriptions. 支持在本地保存转录历史记录。
+- 📝 Export transcripts as SRT, TXT, and more. 支持 SRT、TXT 等多种导出格式。
+- 💰 Real-time pricing estimate when using API transcription. 使用 API 转录时实时估算成本。
+
+## Tech Stack | 技术栈
 
 - Next.js 14 (App Router)
 - TypeScript
 - Tailwind CSS
-- Shadcn/ui
+- shadcn/ui
 - FFmpeg.wasm
 - @huggingface/transformers.js
 - Zustand
 
-## 开发
+## Getting Started | 本地开发
 
 ```bash
-# 安装依赖
+# Install dependencies / 安装依赖
 npm install
 
-# 启动开发服务器
+# Start the dev server / 启动开发服务器
 npm run dev
 ```
 
-## 部署
+Visit `http://localhost:3000` in your browser to verify the app. 在浏览器中访问 `http://localhost:3000` 确认项目正常运行。
 
-本项目可以轻松部署到 Vercel 或 Cloudflare Pages。
+## Deployment | 部署
+
+Deploy to Vercel or Cloudflare Pages with one click. 可一键部署至 Vercel 或 Cloudflare Pages。
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/wyl2003/whisper-flow)
 [![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wyl2003/whisper-flow)
 
-查看效果: [whisper-flow.vercel.app](https://whisper-flow.vercel.app/)
-## 环境变量
+Live demo: [whisper-flow.vercel.app](https://whisper-flow.vercel.app/)
+
+在线预览: [whisper-flow.vercel.app](https://whisper-flow.vercel.app/)
+
+## Environment Variables | 环境变量
 
 ```env
-# 使用OpenAI API时需要
+# Required when using the OpenAI API / 使用 OpenAI API 时必填
 NEXT_PUBLIC_OPENAI_API_KEY=your_api_key
 NEXT_PUBLIC_OPENAI_API_ENDPOINT=your_api_endpoint
 ```
 
-## 许可证
+## License & Credits | 许可证与致谢
 
-MIT
+Inspired by `xenova/whisper-web` with additional improvements. Huge thanks to the original open-source contributors.
+
+项目受 `xenova/whisper-web` 启发，并在此基础上进行了扩展和优化，感谢原作者的开源贡献。
+
+Licensed under the MIT License. 使用 MIT 许可证。
