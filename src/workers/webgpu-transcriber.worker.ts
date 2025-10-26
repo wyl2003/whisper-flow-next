@@ -47,6 +47,105 @@ type TransformersModule = typeof import('@huggingface/transformers')
 
 let transformersPromise: Promise<TransformersModule> | null = null
 
+const DEFAULT_REMOTE_HOST = 'https://huggingface.co/'
+const FALLBACK_MIRROR_HOSTS = ['https://aifasthub.com/', 'https://hf-mirror.com/']
+const HOST_PING_TIMEOUT_MS = 3000
+const HOST_OVERRIDE_KEYS = ['NEXT_PUBLIC_HF_ENDPOINT', 'HF_ENDPOINT', 'VITE_HF_ENDPOINT']
+
+type EnvRecord = Partial<Record<string, string | undefined>>
+
+const ensureTrailingSlash = (host: string) => (host.endsWith('/') ? host : `${host}/`)
+
+const resolveProcessEnv = (): EnvRecord | undefined => {
+	const withProcess = globalThis as typeof globalThis & { process?: { env?: EnvRecord } }
+	return withProcess.process?.env
+}
+
+const resolveEnvHostOverride = () => {
+	const env = resolveProcessEnv()
+	if (!env) {
+		return null
+	}
+	for (const key of HOST_OVERRIDE_KEYS) {
+		const value = env[key]
+		if (value && value.trim()) {
+			return ensureTrailingSlash(value.trim())
+		}
+	}
+	return null
+}
+
+const pingHost = async (host: string) => {
+	const normalizedHost = ensureTrailingSlash(host)
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), HOST_PING_TIMEOUT_MS)
+	try {
+		await fetch(`${normalizedHost}favicon.ico`, {
+			method: 'GET',
+			mode: 'no-cors',
+			cache: 'no-store',
+			signal: controller.signal,
+		})
+		return true
+	} catch (error) {
+		console.warn(`Ping to ${normalizedHost} failed`, error)
+		return false
+	} finally {
+		clearTimeout(timeoutId)
+	}
+}
+
+let hostCandidates: string[] | null = null
+let hostCandidatesPromise: Promise<string[]> | null = null
+let activeHostIndex = 0
+let lastAppliedHost: string | null = null
+
+const resolveHostCandidates = async () => {
+	if (hostCandidates) {
+		return hostCandidates
+	}
+	if (!hostCandidatesPromise) {
+		hostCandidatesPromise = (async () => {
+			const overrideHost = resolveEnvHostOverride()
+			if (overrideHost) {
+				return [overrideHost]
+			}
+
+			const defaultHost = ensureTrailingSlash(DEFAULT_REMOTE_HOST)
+			const mirrorHosts = FALLBACK_MIRROR_HOSTS.map(ensureTrailingSlash)
+			const allHosts = [defaultHost, ...mirrorHosts]
+
+			const reachableHosts: string[] = []
+			for (const host of allHosts) {
+				if (await pingHost(host)) {
+					reachableHosts.push(host)
+				}
+			}
+
+			if (reachableHosts.length > 0) {
+				const remainingHosts = allHosts.filter((host) => !reachableHosts.includes(host))
+				return [...reachableHosts, ...remainingHosts]
+			}
+
+			return allHosts
+		})()
+	}
+	hostCandidates = await hostCandidatesPromise
+	return hostCandidates
+}
+
+const applyRemoteHost = async (transformers: TransformersModule, desiredHost?: string) => {
+	const candidates = await resolveHostCandidates()
+	const candidateHost = desiredHost ?? candidates[activeHostIndex] ?? candidates[0] ?? DEFAULT_REMOTE_HOST
+	const host = ensureTrailingSlash(candidateHost)
+	if (lastAppliedHost === host) {
+		return host
+	}
+	transformers.env.remoteHost = host
+	lastAppliedHost = host
+	return host
+}
+
 const loadTransformersModule = async (): Promise<TransformersModule> => {
 	if (!transformersPromise) {
 		const globalScope = globalThis as typeof globalThis
@@ -68,7 +167,11 @@ const loadTransformersModule = async (): Promise<TransformersModule> => {
 			anyGlobal.document = undefined
 		}
 
-		transformersPromise = import('@huggingface/transformers')
+		transformersPromise = (async () => {
+			const module = await import('@huggingface/transformers')
+			await applyRemoteHost(module)
+			return module
+		})()
 	}
 
 	return transformersPromise
@@ -85,7 +188,9 @@ const getPipeline = async (model: string) => {
 	}
 
 	if (!pipelineInstance) {
-		const { pipeline } = await loadTransformersModule()
+		const transformers = await loadTransformersModule()
+		const { pipeline } = transformers
+		const candidates = await resolveHostCandidates()
 
 		const options: Record<string, unknown> = {
 			device: 'webgpu',
@@ -96,8 +201,32 @@ const getPipeline = async (model: string) => {
 			options.dtype = { encoder_model: 'fp16', decoder_model_merged: 'q4' }
 		}
 
-		pipelineInstance = (await pipeline('automatic-speech-recognition', model, options)) as unknown as PipelineInstance
-		currentModel = model
+		const attemptOrder = [
+			...candidates.slice(activeHostIndex),
+			...candidates.slice(0, activeHostIndex),
+		]
+
+		let lastError: unknown = null
+		for (let index = 0; index < attemptOrder.length; index++) {
+			const host = attemptOrder[index]
+			const appliedHost = await applyRemoteHost(transformers, host)
+			try {
+				pipelineInstance = (await pipeline('automatic-speech-recognition', model, options)) as unknown as PipelineInstance
+				activeHostIndex = candidates.indexOf(appliedHost)
+				currentModel = model
+				break
+			} catch (error) {
+				lastError = error
+				const hasAlternateHost = index < attemptOrder.length - 1
+				if (hasAlternateHost) {
+					console.warn(`Failed to load model from ${host}, retrying with alternate host`, error)
+				}
+			}
+		}
+
+		if (!pipelineInstance) {
+			throw lastError instanceof Error ? lastError : new Error('Failed to initialize transcription pipeline')
+		}
 	}
 
 	return pipelineInstance
@@ -106,7 +235,19 @@ const getPipeline = async (model: string) => {
 const transcribe = async ({ audio, model, subtask, language }: WorkerRequest) => {
 	const { WhisperTextStreamer } = await loadTransformersModule()
 
-	const transcriber = await getPipeline(model)
+	let transcriber: PipelineInstance
+	try {
+		transcriber = await getPipeline(model)
+	} catch (error) {
+		console.error('Failed to initialize transcription pipeline', error)
+		ctx.postMessage({
+			status: 'error',
+			data: {
+				message: '模型资源加载失败，请检查网络连接或稍后重试',
+			},
+		})
+		return null
+	}
 
 	const isDistil = model.startsWith('onnx-community/distil') || model.startsWith('distil-whisper/')
 	const chunkLength = isDistil ? 20 : 30
