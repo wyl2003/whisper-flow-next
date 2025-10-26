@@ -48,7 +48,7 @@ type TransformersModule = typeof import('@huggingface/transformers')
 let transformersPromise: Promise<TransformersModule> | null = null
 
 const DEFAULT_REMOTE_HOST = 'https://huggingface.co/'
-const MIRROR_REMOTE_HOST = 'https://hf-mirror.com/'
+const FALLBACK_MIRROR_HOSTS = ['https://aifasthub.com/', 'https://hf-mirror.com/']
 const HOST_PING_TIMEOUT_MS = 3000
 const HOST_OVERRIDE_KEYS = ['NEXT_PUBLIC_HF_ENDPOINT', 'HF_ENDPOINT', 'VITE_HF_ENDPOINT']
 
@@ -112,17 +112,22 @@ const resolveHostCandidates = async () => {
 			}
 
 			const defaultHost = ensureTrailingSlash(DEFAULT_REMOTE_HOST)
-			const mirrorHost = ensureTrailingSlash(MIRROR_REMOTE_HOST)
+			const mirrorHosts = FALLBACK_MIRROR_HOSTS.map(ensureTrailingSlash)
+			const allHosts = [defaultHost, ...mirrorHosts]
 
-			if (await pingHost(defaultHost)) {
-				return [defaultHost, mirrorHost]
+			const reachableHosts: string[] = []
+			for (const host of allHosts) {
+				if (await pingHost(host)) {
+					reachableHosts.push(host)
+				}
 			}
 
-			if (await pingHost(mirrorHost)) {
-				return [mirrorHost, defaultHost]
+			if (reachableHosts.length > 0) {
+				const remainingHosts = allHosts.filter((host) => !reachableHosts.includes(host))
+				return [...reachableHosts, ...remainingHosts]
 			}
 
-			return [defaultHost, mirrorHost]
+			return allHosts
 		})()
 	}
 	hostCandidates = await hostCandidatesPromise
