@@ -1,0 +1,207 @@
+import type { Messages } from "../types"
+
+export const en: Messages = {
+  locale: "en",
+  seo: {
+    title: "Whisper Flow - Free, private speech-to-text tool",
+    description:
+      "Whisper Flow transcribes audio and video securely in your browser. Run Whisper with WebGPU locally without uploading files.",
+    keywords: [
+      "speech to text",
+      "audio transcription",
+      "video transcription",
+      "speech recognition",
+      "local transcription",
+      "offline transcription",
+      "WebGPU",
+      "Whisper",
+      "OpenAI",
+      "privacy",
+      "free tool",
+    ],
+    openGraph: {
+      title: "Whisper Flow",
+      description:
+        "Free and privacy-first speech-to-text that runs with WebGPU directly in your browser.",
+    },
+  },
+  navigation: {
+    homeTitle: "Whisper Flow – Free Speech-to-Text",
+    github: "GitHub",
+    settings: "API Settings",
+    back: "Back",
+  },
+  home: {
+    headline: "Whisper Flow – Free Speech-to-Text",
+    subtitle: "Transcribe audio and video securely inside your browser",
+  },
+  uploader: {
+    dropActive: "Drop the file here ...",
+    dropIdleTitle: "Drag & drop a file here, or click to select",
+    dropIdleSubtitle: "Supports MP3, WAV, M4A, MP4 and more",
+    estimatedPrice: "Estimated cost: {amount}",
+    localMode: "WebGPU transcription runs locally. No API costs.",
+    buttonIdle: "Start transcription",
+    buttonLoading: "Transcribing {progress}%",
+  },
+  transcriptionSettings: {
+    title: "Transcription settings",
+    mode: {
+      label: "Transcription mode",
+      placeholder: "Choose a transcription mode",
+      description:
+        "Cloud API requires a valid API key. WebGPU runs inference locally in your browser (requires a WebGPU-enabled browser; the first load can take longer).",
+    },
+    webgpuModel: {
+      label: "WebGPU model",
+      placeholder: "Choose a model",
+      description: "Larger models are more accurate but take longer to load and run.",
+    },
+    language: {
+      label: "Language",
+      placeholder: "Choose a language",
+      description: "Select the main language of your audio. Auto-detection may be less accurate.",
+    },
+    outputFormat: {
+      label: "Output format",
+      placeholder: "Choose an output format",
+    },
+    temperature: {
+      label: "Temperature ({value})",
+      description:
+        "Higher values produce more random results, while lower values make output more focused and deterministic.",
+    },
+    prompt: {
+      label: "Prompt",
+      placeholder: "Add context or guidance to improve transcription quality...",
+      description: "Provide optional context or instructions to improve transcription accuracy.",
+    },
+    wordTimestamps: {
+      label: "Word-level timestamps",
+      helperApi: "Generate timestamps for each word (available when JSON output is selected).",
+      helperWebgpu: "Word-level timestamps are not available in WebGPU mode.",
+    },
+  },
+  history: {
+    title: "Transcription history",
+    empty: "No transcription history yet",
+    priceWithValue: "Cost: {amount}",
+    priceLocal: "Cost: Runs locally (0)",
+    selectFormatPlaceholder: "Choose format",
+    copySuccess: "Copied to clipboard",
+    copyErrorTitle: "Copy failed",
+    copyErrorDescription: "Unable to access the clipboard",
+  },
+  settingsPage: {
+    title: "API Settings",
+    saveToastTitle: "Settings saved",
+    saveToastDescription: "Your API configuration was updated successfully",
+    modeSummary: {
+      current: "Current transcription mode: {mode}",
+      api: "Cloud API (requires a valid API key)",
+      webgpu: "Local WebGPU (runs in the browser without an API)",
+    },
+    fields: {
+      apiKey: {
+        label: "API key",
+        placeholder: "Enter your API key",
+        description: "You can find the key in the OpenAI dashboard.",
+        linkLabel: "Open the OpenAI dashboard",
+      },
+      apiEndpoint: {
+        label: "API endpoint",
+        placeholder: "https://api.openai.com/v1/audio/transcriptions",
+        description: "Enter the full URL if you're using a custom endpoint.",
+      },
+      pricePerMinute: {
+        label: "Price per minute",
+        description: "Used to estimate the transcription cost when using the API mode.",
+      },
+      currency: {
+        placeholder: "Select currency",
+      },
+    },
+    saveButton: "Save settings",
+  },
+  toasts: {
+    loadFfmpegErrorTitle: "Failed to load the audio processor",
+    loadFfmpegErrorDescription: "Check your network connection and refresh to try again.",
+    missingApiKeyTitle: "Missing API key",
+    missingApiKeyDescription: "Set your API key before starting a transcription.",
+    transcriptionCompleteTitle: "Transcription complete",
+    transcriptionCompleteDescriptionApi: "Audio transcribed successfully. Cost: {amount}",
+    transcriptionCompleteDescriptionWebgpu: "Finished transcription with WebGPU in the browser.",
+    webgpuUnsupportedTitle: "WebGPU not supported",
+    webgpuUnsupportedDescription: "Use the latest Chrome, Edge, or another WebGPU-enabled browser.",
+    webgpuInitErrorTitle: "WebGPU initialization failed",
+    webgpuInitErrorDescription: "Could not create the WebGPU worker. Please refresh and try again.",
+    transcriptionFailedTitle: "Transcription failed",
+    transcriptionFailedDescription: "Something went wrong during transcription.",
+  },
+  errors: {
+    defaultApi: "Check your API key and network connection",
+    invalidRequest: "Invalid request parameters",
+    authentication: "Your API key is invalid or expired",
+    webgpuUnsupported: "WebGPU is not supported in this browser",
+    webgpuWorkerConflict: "Another WebGPU transcription task is already running",
+    webgpuGeneric: "WebGPU transcription failed",
+    audioContextUnsupported: "AudioContext is not supported in this browser",
+    webgpuPipelineInit: "Failed to load WebGPU model resources. Check your connection and try again.",
+  },
+  languageOptions: [
+    { value: "auto", label: "Auto detect" },
+    { value: "zh", label: "Chinese" },
+    { value: "en", label: "English" },
+    { value: "ja", label: "Japanese" },
+    { value: "ko", label: "Korean" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+    { value: "es", label: "Spanish" },
+    { value: "ru", label: "Russian" },
+    { value: "it", label: "Italian" },
+    { value: "pt", label: "Portuguese" },
+    { value: "nl", label: "Dutch" },
+    { value: "pl", label: "Polish" },
+    { value: "tr", label: "Turkish" },
+    { value: "ar", label: "Arabic" },
+    { value: "th", label: "Thai" },
+    { value: "vi", label: "Vietnamese" },
+    { value: "hi", label: "Hindi" },
+  ],
+  outputFormatOptions: [
+    { value: "text", label: "Plain text" },
+    { value: "srt", label: "SRT subtitles" },
+    { value: "vtt", label: "VTT subtitles" },
+    { value: "json", label: "JSON (with detailed data)" },
+  ],
+  historyOutputFormatOptions: [
+    { value: "text", label: "Plain text" },
+    { value: "srt", label: "SRT subtitles" },
+    { value: "vtt", label: "VTT subtitles" },
+    { value: "json", label: "JSON" },
+  ],
+  transcriptionModeOptions: [
+    { value: "api", label: "Cloud API" },
+    { value: "webgpu", label: "Local WebGPU" },
+  ],
+  currencyOptions: [
+    { value: "USD", label: "US Dollar (USD)" },
+    { value: "EUR", label: "Euro (EUR)" },
+    { value: "GBP", label: "British Pound (GBP)" },
+    { value: "JPY", label: "Japanese Yen (JPY)" },
+    { value: "CNY", label: "Chinese Yuan (CNY)" },
+  ],
+  historyModeLabels: {
+    api: "Cloud API",
+    webgpu: "Local WebGPU",
+  },
+  webgpuModelOptions: [
+    { value: "onnx-community/whisper-tiny", label: "Whisper Tiny (~120MB)" },
+    { value: "onnx-community/whisper-base", label: "Whisper Base (~206MB)" },
+    { value: "onnx-community/whisper-small", label: "Whisper Small (~586MB)" },
+    {
+      value: "onnx-community/whisper-large-v3-turbo",
+      label: "Whisper Large v3 Turbo (~1.6GB)",
+    },
+  ],
+}

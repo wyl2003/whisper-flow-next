@@ -243,7 +243,8 @@ const transcribe = async ({ audio, model, subtask, language }: WorkerRequest) =>
 		ctx.postMessage({
 			status: 'error',
 			data: {
-				message: '模型资源加载失败，请检查网络连接或稍后重试',
+				code: 'pipeline-init-failed',
+				message: error instanceof Error ? error.message : undefined,
 			},
 		})
 		return null
@@ -330,7 +331,10 @@ const transcribe = async ({ audio, model, subtask, language }: WorkerRequest) =>
 		console.error(error)
 		ctx.postMessage({
 			status: 'error',
-			data: error instanceof Error ? { message: error.message } : { message: 'Transcription failed' },
+			data: {
+				code: 'transcription-failed',
+				message: error instanceof Error ? error.message : undefined,
+			},
 		})
 		return null
 	})
