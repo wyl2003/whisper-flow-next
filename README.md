@@ -1,4 +1,4 @@
-# Whisper Flow | 语音流
+# Whisper Flow Next
 
 A modern browser-based audio and video transcription app powered by OpenAI Whisper, built with Next.js. Start transcribing instantly at [whisper.wyls.top](https://whisper.wyls.top/).
 
