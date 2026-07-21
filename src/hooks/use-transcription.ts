@@ -742,7 +742,7 @@ export function useTranscription() {
 				setProgress(10)
 				let audioBuffer: AudioBuffer
 				try {
-					audioBuffer = await decodeAudioFile(file)
+					audioBuffer = await decodeAudioFile(file, () => convertToWavArrayBuffer(file))
 				} catch (error) {
 					const message =
 							error instanceof Error && error.message === AUDIO_CONTEXT_UNSUPPORTED
@@ -752,7 +752,6 @@ export function useTranscription() {
 						: t('errors.webgpuGeneric')
 					throw new Error(message)
 				}
-				const audioBuffer = await decodeAudioFile(file, () => convertToWavArrayBuffer(file))
 				setProgress(20)
 				const monoAudio = toMonoFloat32(audioBuffer)
 				const durationFromAudio = audioBuffer.duration
