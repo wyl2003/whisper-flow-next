@@ -150,7 +150,9 @@ export const en: Messages = {
   },
   languageOptions: [
     { value: "auto", label: "Auto detect" },
-    { value: "zh", label: "Chinese" },
+    { value: "zh-cn", label: "Chinese (Simplified)" },
+    { value: "zh-tw", label: "Chinese (Traditional)" },
+    { value: "zh", label: "Chinese (no conversion)" },
     { value: "en", label: "English" },
     { value: "ja", label: "Japanese" },
     { value: "ko", label: "Korean" },

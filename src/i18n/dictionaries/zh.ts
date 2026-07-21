@@ -151,7 +151,9 @@ export const zh: Messages = {
   },
   languageOptions: [
     { value: "auto", label: "自动检测" },
-    { value: "zh", label: "中文" },
+    { value: "zh-cn", label: "中文（简体）" },
+    { value: "zh-tw", label: "中文（繁体）" },
+    { value: "zh", label: "中文（不转换）" },
     { value: "en", label: "英文" },
     { value: "ja", label: "日文" },
     { value: "ko", label: "韩文" },

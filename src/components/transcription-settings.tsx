@@ -13,48 +13,6 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { useI18n } from "@/components/i18n-provider"
 
-const languages = [
-  { value: "auto", label: "自动检测" },
-  { value: "zh-cn", label: "中文（简体）" },
-  { value: "zh-tw", label: "中文（繁体）" },
-  { value: "zh", label: "中文（不转换）" },
-  { value: "en", label: "英文" },
-  { value: "ja", label: "日文" },
-  { value: "ko", label: "韩文" },
-  { value: "fr", label: "法文" },
-  { value: "de", label: "德文" },
-  { value: "es", label: "西班牙文" },
-  { value: "ru", label: "俄文" },
-  { value: "it", label: "意大利文" },
-  { value: "pt", label: "葡萄牙文" },
-  { value: "nl", label: "荷兰文" },
-  { value: "pl", label: "波兰文" },
-  { value: "tr", label: "土耳其文" },
-  { value: "ar", label: "阿拉伯文" },
-  { value: "th", label: "泰文" },
-  { value: "vi", label: "越南文" },
-  { value: "hi", label: "印地文" },
-]
-
-const outputFormats = [
-  { value: "text", label: "纯文本" },
-  { value: "srt", label: "SRT 字幕" },
-  { value: "vtt", label: "VTT 字幕" },
-  { value: "json", label: "JSON (包含详细信息)" },
-]
-
-const transcriptionModes = [
-  { value: "api", label: "云端 API" },
-  { value: "webgpu", label: "本地 WebGPU" },
-]
-
-const webgpuModels = [
-  { value: "onnx-community/whisper-tiny", label: "Whisper Tiny (~120MB)" },
-  { value: "onnx-community/whisper-base", label: "Whisper Base (~206MB)" },
-  { value: "onnx-community/whisper-small", label: "Whisper Small (~586MB)" },
-  { value: "onnx-community/whisper-large-v3-turbo", label: "Whisper Large v3 Turbo (~1.6GB)" },
-]
-
 export function TranscriptionSettings() {
   const {
     transcriptionMode,
