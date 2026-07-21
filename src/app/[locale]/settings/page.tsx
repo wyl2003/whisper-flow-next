@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useI18n } from "@/components/i18n-provider"
 import { useTranscriptionStore } from "@/store/transcription-store"
 
-export const dynamic = "force-static"
+export const runtime = "edge"
 
 export default function SettingsPage() {
   const {
