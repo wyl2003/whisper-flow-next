@@ -30,9 +30,9 @@ function getLanguageAlternates(currentLocale: Locale) {
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const localeParam = params.locale
+  const { locale: localeParam } = await params
 
   if (!isLocale(localeParam)) {
     return {}
@@ -65,9 +65,9 @@ export default async function LocaleLayout({
   params,
 }: {
   children: ReactNode
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }) {
-  const localeParam = params.locale
+  const { locale: localeParam } = await params
 
   if (!isLocale(localeParam)) {
     notFound()
