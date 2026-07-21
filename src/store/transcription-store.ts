@@ -5,6 +5,8 @@ import { persist } from 'zustand/middleware'
 
 export type Language =
   | "auto"
+  | "zh-cn"
+  | "zh-tw"
   | "zh"
   | "en"
   | "ja"
@@ -68,8 +70,8 @@ interface TranscriptionStore {
   setWebgpuModel: (model: string) => void
 
   // 转录设置
-  language: string
-  setLanguage: (language: string) => void
+  language: Language
+  setLanguage: (language: Language) => void
   outputFormat: string
   setOutputFormat: (format: string) => void
   temperature: number
@@ -120,7 +122,7 @@ export const useTranscriptionStore = create<TranscriptionStore>()(
 
       // 转录设置
       language: "auto",
-      setLanguage: (language: string) => set({ language }),
+      setLanguage: (language: Language) => set({ language }),
       outputFormat: "text",
       setOutputFormat: (format: string) => set({ outputFormat: format }),
       temperature: 0,

@@ -5,6 +5,12 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { useTranscriptionStore } from '@/store/transcription-store'
 import { useToast } from '@/components/ui/use-toast'
+import {
+	convertChineseScript,
+	getChineseScriptPreference,
+	normalizeWhisperLanguage,
+	type ChineseScriptPreference,
+} from '@/lib/chinese-script'
 
 const WEBGPU_SAMPLE_RATE = 16000
 const WEBGPU_WORKER_URL = '/workers/webgpu-transcriber.worker.js'
@@ -106,13 +112,12 @@ const resampleAudioBuffer = async (buffer: AudioBuffer, targetSampleRate: number
 	return offlineContext.startRendering()
 }
 
-const decodeAudioFile = async (file: File) => {
+const decodeArrayBuffer = async (arrayBuffer: ArrayBuffer) => {
 	const AudioContextCtor = getAudioContextConstructor()
 	if (!AudioContextCtor) {
 		throw new Error('当前环境不支持 AudioContext')
 	}
 
-	const arrayBuffer = await file.arrayBuffer()
 	let audioContext: AudioContext | null = null
 	try {
 		audioContext = new AudioContextCtor({ sampleRate: WEBGPU_SAMPLE_RATE } as AudioContextOptions)
@@ -120,10 +125,30 @@ const decodeAudioFile = async (file: File) => {
 		audioContext = new AudioContextCtor()
 	}
 
-	const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
+	try {
+		return await audioContext.decodeAudioData(arrayBuffer.slice(0))
+	} finally {
+		if (audioContext.state !== 'closed') {
+			await audioContext.close().catch(() => {})
+		}
+	}
+}
 
-	if (audioContext.state !== 'closed') {
-		await audioContext.close().catch(() => {})
+const decodeAudioFile = async (
+	file: File,
+	fallbackArrayBufferProvider?: () => Promise<ArrayBuffer>
+) => {
+	const arrayBuffer = await file.arrayBuffer()
+	let audioBuffer: AudioBuffer
+
+	try {
+		audioBuffer = await decodeArrayBuffer(arrayBuffer)
+	} catch (decodeError) {
+		if (!fallbackArrayBufferProvider) {
+			throw decodeError
+		}
+		const fallbackBuffer = await fallbackArrayBufferProvider()
+		audioBuffer = await decodeArrayBuffer(fallbackBuffer)
 	}
 
 	const processed = await resampleAudioBuffer(audioBuffer, WEBGPU_SAMPLE_RATE).catch(() => audioBuffer)
@@ -174,6 +199,124 @@ const buildSegments = (chunks: WebgpuWorkerChunk[]) => {
 			}
 		})
 		.filter((segment): segment is { id: number; start: number; end: number; text: string } => Boolean(segment))
+}
+
+const convertSegments = (
+	segments: Array<{ id: number; start: number; end: number; text: string }>,
+	preference: ChineseScriptPreference
+) =>
+	segments.map((segment) => ({
+		...segment,
+		text: convertChineseScript(segment.text, preference),
+	}))
+
+const hasPunctuation = (text: string) => /[，。！？；：、,.!?;:]/.test(text)
+
+const isChineseLanguage = (language: string | null | undefined) => Boolean(language && language.startsWith('zh'))
+
+const hasChineseCharacters = (text: string) => /[\u3400-\u9fff]/.test(text)
+
+const endsWithPunctuation = (text: string) => /[，。！？；：、,.!?;:]$/.test(text)
+
+const punctuateChineseByLength = (text: string) => {
+	const chars = text.trim().split('')
+	if (chars.length === 0) {
+		return text
+	}
+
+	let output = ''
+	let runLength = 0
+	let commaCountSincePeriod = 0
+
+	for (let i = 0; i < chars.length; i++) {
+		const ch = chars[i]
+		output += ch
+
+		if (/[，。！？；：、,.!?;:]/.test(ch)) {
+			runLength = 0
+			if (/[。！？.!?]/.test(ch)) {
+				commaCountSincePeriod = 0
+			}
+			continue
+		}
+
+		runLength += 1
+		const isLast = i === chars.length - 1
+		if (isLast) {
+			continue
+		}
+
+		if (runLength >= 22) {
+			commaCountSincePeriod += 1
+			if (commaCountSincePeriod >= 3) {
+				output += '。'
+				commaCountSincePeriod = 0
+			} else {
+				output += '，'
+			}
+			runLength = 0
+		}
+	}
+
+	if (!endsWithPunctuation(output)) {
+		output += '。'
+	}
+
+	return output
+}
+
+const buildChineseTextWithPunctuation = (
+	segments: Array<{ start: number; end: number; text: string }>,
+	fallbackText: string
+) => {
+	if (segments.length === 0) {
+		return punctuateChineseByLength(fallbackText)
+	}
+
+	let output = ''
+	let commaCountSincePeriod = 0
+
+	for (let i = 0; i < segments.length; i++) {
+		const currentText = segments[i].text.trim()
+		if (!currentText) {
+			continue
+		}
+
+		output += currentText
+		if (endsWithPunctuation(currentText)) {
+			continue
+		}
+
+		const next = segments[i + 1]
+		if (!next) {
+			output += '。'
+			commaCountSincePeriod = 0
+			continue
+		}
+
+		const gap = Math.max(0, next.start - segments[i].end)
+		if (gap >= 0.9) {
+			output += '。'
+			commaCountSincePeriod = 0
+		} else if (gap >= 0.35) {
+			output += '，'
+			commaCountSincePeriod += 1
+		} else if (currentText.length >= 6) {
+			if (commaCountSincePeriod >= 2) {
+				output += '。'
+				commaCountSincePeriod = 0
+			} else {
+				output += '，'
+				commaCountSincePeriod += 1
+			}
+		}
+	}
+
+	const resolved = output || fallbackText
+	if (!hasPunctuation(resolved)) {
+		return punctuateChineseByLength(resolved)
+	}
+	return resolved
 }
 
 export function useTranscription() {
@@ -349,6 +492,48 @@ export function useTranscription() {
 		}
 	}, [ensureFFmpegLoaded, ffmpeg])
 
+	const convertToWavArrayBuffer = useCallback(async (file: File) => {
+		if (!ffmpeg) {
+			throw new Error('FFmpeg not initialized')
+		}
+
+		await ensureFFmpegLoaded()
+
+		try {
+			const inputFileName = `webgpu-input-${Date.now()}.bin`
+			const outputFileName = `webgpu-output-${Date.now()}.wav`
+			const data = new Uint8Array(await file.arrayBuffer())
+			await ffmpeg.writeFile(inputFileName, data)
+			await ffmpeg.exec([
+				'-i',
+				inputFileName,
+				'-vn',
+				'-ac',
+				'1',
+				'-ar',
+				WEBGPU_SAMPLE_RATE.toString(),
+				'-f',
+				'wav',
+				outputFileName,
+			])
+			const outputData = await ffmpeg.readFile(outputFileName)
+			const bufferView =
+				outputData instanceof Uint8Array
+					? outputData
+					: typeof outputData === 'string'
+						? new TextEncoder().encode(outputData)
+						: new Uint8Array(outputData as unknown as ArrayBufferLike)
+
+			return bufferView.buffer.slice(
+				bufferView.byteOffset,
+				bufferView.byteOffset + bufferView.byteLength
+			) as ArrayBuffer
+		} catch (error) {
+			console.error('WebGPU 音频转码失败:', error)
+			throw new Error('无法解码该音频文件，请尝试重新导出为 AAC/MP3/WAV 后重试')
+		}
+	}, [ensureFFmpegLoaded, ffmpeg])
+
 	const transcribeWithApi = useCallback(async (file: File) => {
 		if (!ffmpeg) {
 			throw new Error('FFmpeg not initialized')
@@ -370,8 +555,10 @@ export function useTranscription() {
 		const formData = new FormData()
 		formData.append('file', mp3File)
 		formData.append('model', 'whisper-1')
-		if (language !== 'auto') {
-			formData.append('language', language)
+		const languageOption = normalizeWhisperLanguage(language)
+		const chineseScriptPreference = getChineseScriptPreference(language)
+		if (languageOption) {
+			formData.append('language', languageOption)
 		}
 		formData.append('response_format', outputFormat === 'text' ? 'text' : 'verbose_json')
 		formData.append('temperature', temperature.toString())
@@ -437,6 +624,18 @@ export function useTranscription() {
 			}))
 		}
 
+		if (chineseScriptPreference) {
+			text = convertChineseScript(text, chineseScriptPreference)
+			segments = convertSegments(segments, chineseScriptPreference)
+			if (result) {
+				result = {
+					...result,
+					text,
+					segments,
+				}
+			}
+		}
+
 		let output = text
 		if (segments) {
 			switch (outputFormat) {
@@ -460,7 +659,7 @@ export function useTranscription() {
 			filename: file.name,
 			duration,
 			text: output,
-			language: result?.language || language,
+			language: language === 'auto' ? result?.language || language : language,
 			created_at: new Date().toISOString(),
 			file_size: file.size,
 			segments,
@@ -523,12 +722,13 @@ export function useTranscription() {
 				}
 
 				setProgress(10)
-				const audioBuffer = await decodeAudioFile(file)
+				const audioBuffer = await decodeAudioFile(file, () => convertToWavArrayBuffer(file))
 				setProgress(20)
 				const monoAudio = toMonoFloat32(audioBuffer)
 				const durationFromAudio = audioBuffer.duration
 
-				const languageOption = language !== 'auto' ? language : null
+				const languageOption = normalizeWhisperLanguage(language)
+				const chineseScriptPreference = getChineseScriptPreference(language)
 
 				const result = await new Promise<WebgpuWorkerResult>((resolve, reject) => {
 					if (workerPromiseRef.current) {
@@ -543,6 +743,7 @@ export function useTranscription() {
 								audio: monoAudio,
 								model: webgpuModel,
 								language: languageOption,
+								prompt: prompt || null,
 								subtask: 'transcribe',
 							},
 							[monoAudio.buffer]
@@ -557,6 +758,12 @@ export function useTranscription() {
 				const segments = buildSegments(chunks)
 				const fallbackText = segments.map((segment) => segment.text).join(' ').trim()
 				const plainText = (result.text || fallbackText).trim()
+				const resolvedChunks = chineseScriptPreference
+					? chunks.map((chunk) => ({
+							...chunk,
+							text: convertChineseScript(chunk.text, chineseScriptPreference),
+						}))
+					: chunks
 
 				const normalizedSegments = segments.length
 					? segments
@@ -571,24 +778,37 @@ export function useTranscription() {
 							]
 						: []
 
-				const duration = normalizedSegments.length
-					? normalizedSegments[normalizedSegments.length - 1].end ?? durationFromAudio
+				const resolvedSegments = chineseScriptPreference
+					? convertSegments(normalizedSegments, chineseScriptPreference)
+					: normalizedSegments
+				const resolvedLanguage = language === 'auto' ? result.language || language : language
+				let resolvedPlainText = convertChineseScript(plainText, chineseScriptPreference)
+				const shouldAutoPunctuateChinese =
+					isChineseLanguage(resolvedLanguage) &&
+					hasChineseCharacters(resolvedPlainText) &&
+					!hasPunctuation(resolvedPlainText)
+				if (shouldAutoPunctuateChinese) {
+					resolvedPlainText = buildChineseTextWithPunctuation(resolvedSegments, resolvedPlainText)
+				}
+
+				const duration = resolvedSegments.length
+					? resolvedSegments[resolvedSegments.length - 1].end ?? durationFromAudio
 					: durationFromAudio
 
-				let output = plainText
+				let output = resolvedPlainText
 				switch (outputFormat) {
 					case 'srt':
-						output = generateSRT(normalizedSegments)
+						output = generateSRT(resolvedSegments)
 						break
 					case 'vtt':
-						output = generateVTT(normalizedSegments)
+						output = generateVTT(resolvedSegments)
 						break
 					case 'json':
 						output = JSON.stringify(
 							{
-								text: result.text ?? plainText,
+								text: resolvedPlainText,
 								language: result.language ?? language,
-								chunks,
+								chunks: resolvedChunks,
 							},
 							null,
 							2
@@ -603,10 +823,10 @@ export function useTranscription() {
 					filename: file.name,
 					duration,
 					text: output,
-					language: result.language || language,
+					language: resolvedLanguage,
 					created_at: new Date().toISOString(),
 					file_size: file.size,
-					segments: normalizedSegments,
+					segments: resolvedSegments,
 					format: outputFormat,
 					actualPrice: 0,
 					mode: 'webgpu' as const,
@@ -639,7 +859,7 @@ export function useTranscription() {
 				}
 			}
 		},
-		[addToHistory, ensureWorker, language, outputFormat, toast, webgpuModel]
+		[addToHistory, convertToWavArrayBuffer, ensureWorker, language, outputFormat, prompt, toast, webgpuModel]
 	)
 
 	const transcribe = useCallback(
@@ -670,4 +890,3 @@ export function useTranscription() {
 		isLoading,
 	}
 }
-
