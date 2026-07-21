@@ -4,6 +4,7 @@ type WorkerRequest = {
 	audio: Float32Array
 	model: string
 	language?: string | null
+	prompt?: string | null
 	subtask?: string | null
 }
 
@@ -146,6 +147,58 @@ const applyRemoteHost = async (transformers: TransformersModule, desiredHost?: s
 	return host
 }
 
+const normalizePromptIds = (value: unknown): number[] | null => {
+	if (Array.isArray(value)) {
+		const ids = value.filter((item): item is number => typeof item === 'number' && Number.isFinite(item))
+		return ids.length > 0 ? ids : null
+	}
+
+	if (ArrayBuffer.isView(value)) {
+		const ids = Array.from(value as unknown as ArrayLike<number>).filter((item) => Number.isFinite(item))
+		return ids.length > 0 ? ids : null
+	}
+
+	if (value && typeof value === 'object') {
+		const record = value as { input_ids?: unknown; ids?: unknown; data?: unknown }
+		return normalizePromptIds(record.input_ids ?? record.ids ?? record.data)
+	}
+
+	return null
+}
+
+const buildPromptIds = async (tokenizer: unknown, prompt: string) => {
+	const trimmedPrompt = prompt.trim()
+	if (!trimmedPrompt) {
+		return null
+	}
+
+	const candidateTokenizer = tokenizer as {
+		encode?: (text: string, options?: Record<string, unknown>) => unknown
+		get_prompt_ids?: (text: string) => unknown
+		getPromptIds?: (text: string) => unknown
+	}
+
+	const attempts = [
+		() => candidateTokenizer.get_prompt_ids?.(trimmedPrompt),
+		() => candidateTokenizer.getPromptIds?.(trimmedPrompt),
+		() => candidateTokenizer.encode?.(trimmedPrompt, { add_special_tokens: false }),
+	]
+
+	for (const attempt of attempts) {
+		try {
+			const result = await attempt()
+			const promptIds = normalizePromptIds(result)
+			if (promptIds) {
+				return promptIds
+			}
+		} catch (error) {
+			console.warn('Failed to build WebGPU prompt ids', error)
+		}
+	}
+
+	return null
+}
+
 const loadTransformersModule = async (): Promise<TransformersModule> => {
 	if (!transformersPromise) {
 		const globalScope = globalThis as typeof globalThis
@@ -232,7 +285,7 @@ const getPipeline = async (model: string) => {
 	return pipelineInstance
 }
 
-const transcribe = async ({ audio, model, subtask, language }: WorkerRequest) => {
+const transcribe = async ({ audio, model, subtask, language, prompt }: WorkerRequest) => {
 	const { WhisperTextStreamer } = await loadTransformersModule()
 
 	let transcriber: PipelineInstance
@@ -320,6 +373,16 @@ const transcribe = async ({ audio, model, subtask, language }: WorkerRequest) =>
 
 	if (language) {
 		options.language = language
+	}
+
+	if (prompt && prompt.trim()) {
+		const trimmedPrompt = prompt.trim()
+		options.initial_prompt = trimmedPrompt
+
+		const promptIds = await buildPromptIds(transcriber.tokenizer, trimmedPrompt)
+		if (promptIds) {
+			options.prompt_ids = promptIds
+		}
 	}
 
 	if (subtask) {

@@ -5,6 +5,12 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { useTranscriptionStore } from '@/store/transcription-store'
 import { useToast } from '@/components/ui/use-toast'
+import {
+	convertChineseScript,
+	getChineseScriptPreference,
+	normalizeWhisperLanguage,
+	type ChineseScriptPreference,
+} from '@/lib/chinese-script'
 
 const WEBGPU_SAMPLE_RATE = 16000
 const WEBGPU_WORKER_URL = '/workers/webgpu-transcriber.worker.js'
@@ -175,6 +181,15 @@ const buildSegments = (chunks: WebgpuWorkerChunk[]) => {
 		})
 		.filter((segment): segment is { id: number; start: number; end: number; text: string } => Boolean(segment))
 }
+
+const convertSegments = (
+	segments: Array<{ id: number; start: number; end: number; text: string }>,
+	preference: ChineseScriptPreference
+) =>
+	segments.map((segment) => ({
+		...segment,
+		text: convertChineseScript(segment.text, preference),
+	}))
 
 export function useTranscription() {
 	const {
@@ -370,8 +385,10 @@ export function useTranscription() {
 		const formData = new FormData()
 		formData.append('file', mp3File)
 		formData.append('model', 'whisper-1')
-		if (language !== 'auto') {
-			formData.append('language', language)
+		const languageOption = normalizeWhisperLanguage(language)
+		const chineseScriptPreference = getChineseScriptPreference(language)
+		if (languageOption) {
+			formData.append('language', languageOption)
 		}
 		formData.append('response_format', outputFormat === 'text' ? 'text' : 'verbose_json')
 		formData.append('temperature', temperature.toString())
@@ -437,6 +454,18 @@ export function useTranscription() {
 			}))
 		}
 
+		if (chineseScriptPreference) {
+			text = convertChineseScript(text, chineseScriptPreference)
+			segments = convertSegments(segments, chineseScriptPreference)
+			if (result) {
+				result = {
+					...result,
+					text,
+					segments,
+				}
+			}
+		}
+
 		let output = text
 		if (segments) {
 			switch (outputFormat) {
@@ -460,7 +489,7 @@ export function useTranscription() {
 			filename: file.name,
 			duration,
 			text: output,
-			language: result?.language || language,
+			language: language === 'auto' ? result?.language || language : language,
 			created_at: new Date().toISOString(),
 			file_size: file.size,
 			segments,
@@ -528,7 +557,8 @@ export function useTranscription() {
 				const monoAudio = toMonoFloat32(audioBuffer)
 				const durationFromAudio = audioBuffer.duration
 
-				const languageOption = language !== 'auto' ? language : null
+				const languageOption = normalizeWhisperLanguage(language)
+				const chineseScriptPreference = getChineseScriptPreference(language)
 
 				const result = await new Promise<WebgpuWorkerResult>((resolve, reject) => {
 					if (workerPromiseRef.current) {
@@ -543,6 +573,7 @@ export function useTranscription() {
 								audio: monoAudio,
 								model: webgpuModel,
 								language: languageOption,
+								prompt: prompt || null,
 								subtask: 'transcribe',
 							},
 							[monoAudio.buffer]
@@ -557,6 +588,12 @@ export function useTranscription() {
 				const segments = buildSegments(chunks)
 				const fallbackText = segments.map((segment) => segment.text).join(' ').trim()
 				const plainText = (result.text || fallbackText).trim()
+				const resolvedChunks = chineseScriptPreference
+					? chunks.map((chunk) => ({
+							...chunk,
+							text: convertChineseScript(chunk.text, chineseScriptPreference),
+						}))
+					: chunks
 
 				const normalizedSegments = segments.length
 					? segments
@@ -571,24 +608,29 @@ export function useTranscription() {
 							]
 						: []
 
-				const duration = normalizedSegments.length
-					? normalizedSegments[normalizedSegments.length - 1].end ?? durationFromAudio
+				const resolvedSegments = chineseScriptPreference
+					? convertSegments(normalizedSegments, chineseScriptPreference)
+					: normalizedSegments
+				const resolvedPlainText = convertChineseScript(plainText, chineseScriptPreference)
+
+				const duration = resolvedSegments.length
+					? resolvedSegments[resolvedSegments.length - 1].end ?? durationFromAudio
 					: durationFromAudio
 
-				let output = plainText
+				let output = resolvedPlainText
 				switch (outputFormat) {
 					case 'srt':
-						output = generateSRT(normalizedSegments)
+						output = generateSRT(resolvedSegments)
 						break
 					case 'vtt':
-						output = generateVTT(normalizedSegments)
+						output = generateVTT(resolvedSegments)
 						break
 					case 'json':
 						output = JSON.stringify(
 							{
-								text: result.text ?? plainText,
+								text: resolvedPlainText,
 								language: result.language ?? language,
-								chunks,
+								chunks: resolvedChunks,
 							},
 							null,
 							2
@@ -603,10 +645,10 @@ export function useTranscription() {
 					filename: file.name,
 					duration,
 					text: output,
-					language: result.language || language,
+					language: language === 'auto' ? result.language || language : language,
 					created_at: new Date().toISOString(),
 					file_size: file.size,
-					segments: normalizedSegments,
+					segments: resolvedSegments,
 					format: outputFormat,
 					actualPrice: 0,
 					mode: 'webgpu' as const,
@@ -639,7 +681,7 @@ export function useTranscription() {
 				}
 			}
 		},
-		[addToHistory, ensureWorker, language, outputFormat, toast, webgpuModel]
+		[addToHistory, ensureWorker, language, outputFormat, prompt, toast, webgpuModel]
 	)
 
 	const transcribe = useCallback(
@@ -670,4 +712,3 @@ export function useTranscription() {
 		isLoading,
 	}
 }
-

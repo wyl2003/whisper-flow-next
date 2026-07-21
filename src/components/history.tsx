@@ -20,7 +20,9 @@ import {
 
 const languages = {
   auto: "自动检测",
-  zh: "中文",
+  "zh-cn": "中文（简体）",
+  "zh-tw": "中文（繁体）",
+  zh: "中文（不转换）",
   en: "英文",
   ja: "日文",
   ko: "韩文",
