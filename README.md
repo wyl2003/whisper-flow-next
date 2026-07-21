@@ -1,8 +1,12 @@
 # Whisper Flow Next
 
-A modern browser-based audio and video transcription app powered by OpenAI Whisper, built with Next.js. Start transcribing instantly at [whisper.wyls.top](https://whisper.wyls.top/). Multi-language support is being tested, [Try now (English demo)](https://whisper-flow-next-git-feat-multi-language-wyl2003s-projects.vercel.app/?_vercel_share=hNuouS3XdflisgEd7zKCtjNlfJ9ufBPB).
+A modern browser-based audio and video transcription app powered by OpenAI Whisper, built with Next.js. Start transcribing instantly at [whisper.wyls.top](https://whisper.wyls.top/).
 
 一个现代化的浏览器端音视频转文字应用，基于 OpenAI Whisper 和 Next.js 构建。访问 [whisper.wyls.top](https://whisper.wyls.top/) 立即体验。
+
+> **English UI is now available!** Switch languages via the button in the top navigation bar. This is a recent addition — if you notice any translation issues, please [open an issue](https://github.com/wyl2003/whisper-flow-next/issues). Interested in contributing another language? Pull requests are welcome!
+>
+> **英文界面已上线！** 点击顶部导航栏的语言按钮即可切换。英文翻译近期才完成，如有错误请[提交 Issue](https://github.com/wyl2003/whisper-flow-next/issues)。欢迎提 PR 贡献其他语言！
 
 ## Overview | 项目概览
 

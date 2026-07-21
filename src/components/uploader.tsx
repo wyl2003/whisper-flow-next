@@ -8,12 +8,14 @@ import { formatBytes } from "@/lib/format-bytes"
 import { useToast } from "@/components/ui/use-toast"
 import { useTranscriptionStore } from "@/store/transcription-store"
 import { estimatePrice, formatPrice } from "@/lib/calculate-price"
+import { useI18n } from "@/components/i18n-provider"
 
 export function Uploader() {
   const [file, setFile] = useState<File | null>(null)
   const { transcribe, isLoading, progress } = useTranscription()
   const { toast } = useToast()
   const { pricePerMinute, currency, transcriptionMode } = useTranscriptionStore()
+  const { t } = useI18n()
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -38,7 +40,7 @@ export function Uploader() {
       await transcribe(file)
       setFile(null)
     } catch (error) {
-      // 错误已在 transcribe 函数中处理
+      // Errors are surfaced inside the transcribe hook; no extra handling here.
     }
   }
 
@@ -60,12 +62,12 @@ export function Uploader() {
           <Cloud className="h-10 w-10 text-gray-400" />
           <div className="text-center">
             {isDragActive ? (
-              <p>将文件放在这里 ...</p>
+              <p>{t("uploader.dropActive")}</p>
             ) : (
               <>
-                <p>拖放文件到这里，或点击选择文件</p>
+                <p>{t("uploader.dropIdleTitle")}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  支持 MP3, WAV, M4A, MP4 等格式
+                  {t("uploader.dropIdleSubtitle")}
                 </p>
               </>
             )}
@@ -81,10 +83,14 @@ export function Uploader() {
               <p className="font-medium truncate">{file.name}</p>
               <div className="text-sm text-gray-500 space-y-1">
                 <p>{formatBytes(file.size)}</p>
-                {transcriptionMode === 'api' ? (
-                  <p>预估费用：{formatPrice(estimatedPrice, currency)}</p>
+                {transcriptionMode === "api" ? (
+                  <p>
+                    {t("uploader.estimatedPrice", {
+                      amount: formatPrice(estimatedPrice, currency),
+                    })}
+                  </p>
                 ) : (
-                  <p>本地 WebGPU 转录，无需 API 费用</p>
+                  <p>{t("uploader.localMode")}</p>
                 )}
               </div>
             </div>
@@ -97,10 +103,10 @@ export function Uploader() {
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>转录中 {progress}%</span>
+                <span>{t("uploader.buttonLoading", { progress })}</span>
               </>
             ) : (
-              "开始转录"
+              t("uploader.buttonIdle")
             )}
           </button>
         </div>

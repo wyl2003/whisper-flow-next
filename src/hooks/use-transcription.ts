@@ -5,6 +5,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { useTranscriptionStore } from '@/store/transcription-store'
 import { useToast } from '@/components/ui/use-toast'
+import { useI18n } from '@/components/i18n-provider'
 import {
 	convertChineseScript,
 	getChineseScriptPreference,
@@ -14,6 +15,7 @@ import {
 
 const WEBGPU_SAMPLE_RATE = 16000
 const WEBGPU_WORKER_URL = '/workers/webgpu-transcriber.worker.js'
+const AUDIO_CONTEXT_UNSUPPORTED = 'AUDIO_CONTEXT_UNSUPPORTED'
 
 interface WebgpuWorkerChunk {
 	text: string
@@ -27,15 +29,15 @@ interface WebgpuWorkerResult {
 	tps?: number
 }
 
+type WebgpuWorkerErrorCode = 'pipeline-init-failed' | 'transcription-failed'
+
 type WebgpuWorkerMessage =
 	| { status: 'initiate' | 'ready' | 'done' }
 	| { status: 'progress'; progress?: number; file?: string; loaded?: number; total?: number }
 	| { status: 'update'; data: { chunks: WebgpuWorkerChunk[]; text?: string; tps?: number } }
 	| { status: 'complete'; data: WebgpuWorkerResult }
-	| { status: 'error'; data?: { message?: string } }
+	| { status: 'error'; data?: { message?: string; code?: WebgpuWorkerErrorCode } }
 	| { status: string; [key: string]: unknown }
-
-const WEBGPU_UNSUPPORTED_ERROR = '当前浏览器不支持 WebGPU'
 
 const formatTimestamp = (seconds: number) => {
 	const pad = (num: number) => num.toString().padStart(2, '0')
@@ -115,7 +117,7 @@ const resampleAudioBuffer = async (buffer: AudioBuffer, targetSampleRate: number
 const decodeArrayBuffer = async (arrayBuffer: ArrayBuffer) => {
 	const AudioContextCtor = getAudioContextConstructor()
 	if (!AudioContextCtor) {
-		throw new Error('当前环境不支持 AudioContext')
+		throw new Error(AUDIO_CONTEXT_UNSUPPORTED)
 	}
 
 	let audioContext: AudioContext | null = null
@@ -345,6 +347,7 @@ export function useTranscription() {
 		reject: (reason?: unknown) => void
 	} | null>(null)
 	const { toast } = useToast()
+	const { t } = useI18n()
 
 	const handleWorkerMessage = useCallback((event: MessageEvent<WebgpuWorkerMessage>) => {
 		const message = event.data
@@ -379,8 +382,20 @@ export function useTranscription() {
 				}
 				break
 			case 'error': {
-				const errorMessage =
-					(message.data as { message?: string } | undefined)?.message || 'WebGPU 转录失败'
+				const data = (message.data as { message?: string; code?: string } | undefined) ?? {}
+				let errorMessage: string
+				switch (data.code) {
+					case 'pipeline-init-failed':
+						errorMessage = t('errors.webgpuPipelineInit')
+						break
+					case 'transcription-failed':
+						errorMessage = t('errors.webgpuGeneric')
+						break
+					default:
+						errorMessage = data.message || t('errors.webgpuGeneric')
+						break
+				}
+
 				if (workerPromiseRef.current) {
 					workerPromiseRef.current.reject(new Error(errorMessage))
 					workerPromiseRef.current = null
@@ -390,7 +405,7 @@ export function useTranscription() {
 			default:
 				break
 		}
-	}, [])
+		}, [t])
 
 	const ensureWorker = useCallback(() => {
 		if (typeof window === 'undefined') {
@@ -411,7 +426,7 @@ export function useTranscription() {
 				})
 				workerRef.current = worker
 			} catch (error) {
-				console.error('创建 WebGPU worker 失败:', error)
+				console.error('Failed to create WebGPU worker:', error)
 				return null
 			}
 		}
@@ -443,15 +458,15 @@ export function useTranscription() {
 			})
 			setIsFFmpegLoaded(true)
 		} catch (error) {
-			console.error('加载 FFmpeg 失败:', error)
+			console.error('Failed to load FFmpeg:', error)
 			toast({
-				title: '加载音频处理组件失败',
-				description: '请检查网络连接并刷新页面重试',
+				title: t('toasts.loadFfmpegErrorTitle'),
+				description: t('toasts.loadFfmpegErrorDescription'),
 				variant: 'destructive',
 			})
 			throw error
 		}
-	}, [ffmpeg, isFFmpegLoaded, toast])
+		}, [ffmpeg, isFFmpegLoaded, t, toast])
 
 	const convertToMp3 = useCallback(async (file: File) => {
 		if (!ffmpeg) {
@@ -487,7 +502,7 @@ export function useTranscription() {
 			const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
 			return new File([blob], 'audio.mp3', { type: 'audio/mpeg' })
 		} catch (error) {
-			console.error('音频转码失败:', error)
+			console.error('Audio transcoding failed:', error)
 			throw error
 		}
 	}, [ensureFFmpegLoaded, ffmpeg])
@@ -541,8 +556,8 @@ export function useTranscription() {
 
 		if (!apiKey) {
 			toast({
-				title: '错误',
-				description: '请先设置 API Key',
+				title: t('toasts.missingApiKeyTitle'),
+				description: t('toasts.missingApiKeyDescription'),
 				variant: 'destructive',
 			})
 			throw new Error('MISSING_API_KEY')
@@ -581,20 +596,20 @@ export function useTranscription() {
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({}))
-			let errorMessage = '请检查 API 密钥和网络连接'
+			let errorMessage = t('errors.defaultApi')
 
 			if (errorData.error) {
 				if (errorData.error.type === 'invalid_request_error') {
-					errorMessage = '无效的请求参数'
+					errorMessage = t('errors.invalidRequest')
 				} else if (errorData.error.type === 'authentication_error') {
-					errorMessage = 'API 密钥无效或已过期'
+					errorMessage = t('errors.authentication')
 				} else if (errorData.error.message) {
 					errorMessage = errorData.error.message
 				}
 			}
 
 			toast({
-				title: '转录失败',
+				title: t('toasts.transcriptionFailedTitle'),
 				description: errorMessage,
 				variant: 'destructive',
 			})
@@ -675,8 +690,10 @@ export function useTranscription() {
 		setProgress(100)
 
 		toast({
-			title: '转录完成',
-			description: `音频已成功转录为文字，费用：${formatPriceValue(actualPrice, currency)}`,
+			title: t('toasts.transcriptionCompleteTitle'),
+			description: t('toasts.transcriptionCompleteDescriptionApi', {
+				amount: formatPriceValue(actualPrice, currency),
+			}),
 		})
 
 		return transcriptionResult
@@ -691,6 +708,7 @@ export function useTranscription() {
 		outputFormat,
 		pricePerMinute,
 		prompt,
+		t,
 		temperature,
 		toast,
 		wordTimestamps,
@@ -704,25 +722,36 @@ export function useTranscription() {
 
 				if (!hasWebgpu) {
 					toast({
-						title: '浏览器不支持 WebGPU',
-						description: '请使用最新版本的 Chrome、Edge 或其他支持 WebGPU 的浏览器',
+						title: t('toasts.webgpuUnsupportedTitle'),
+						description: t('toasts.webgpuUnsupportedDescription'),
 						variant: 'destructive',
 					})
-					throw new Error(WEBGPU_UNSUPPORTED_ERROR)
+					throw new Error(t('errors.webgpuUnsupported'))
 				}
 
 				const worker = ensureWorker()
 				if (!worker) {
 					toast({
-						title: '初始化 WebGPU 失败',
-						description: '无法创建 WebGPU 工作线程，请刷新页面后重试',
+						title: t('toasts.webgpuInitErrorTitle'),
+						description: t('toasts.webgpuInitErrorDescription'),
 						variant: 'destructive',
 					})
-					throw new Error('WEBGPU_WORKER_UNAVAILABLE')
+					throw new Error(t('errors.webgpuGeneric'))
 				}
 
 				setProgress(10)
-				const audioBuffer = await decodeAudioFile(file, () => convertToWavArrayBuffer(file))
+				let audioBuffer: AudioBuffer
+				try {
+					audioBuffer = await decodeAudioFile(file, () => convertToWavArrayBuffer(file))
+				} catch (error) {
+					const message =
+							error instanceof Error && error.message === AUDIO_CONTEXT_UNSUPPORTED
+							? t('errors.audioContextUnsupported')
+						: error instanceof Error && error.message
+							? error.message
+						: t('errors.webgpuGeneric')
+					throw new Error(message)
+				}
 				setProgress(20)
 				const monoAudio = toMonoFloat32(audioBuffer)
 				const durationFromAudio = audioBuffer.duration
@@ -732,7 +761,7 @@ export function useTranscription() {
 
 				const result = await new Promise<WebgpuWorkerResult>((resolve, reject) => {
 					if (workerPromiseRef.current) {
-						workerPromiseRef.current.reject(new Error('已有 WebGPU 转录任务正在执行'))
+						workerPromiseRef.current.reject(new Error(t('errors.webgpuWorkerConflict')))
 					}
 
 					workerPromiseRef.current = { resolve, reject }
@@ -840,16 +869,19 @@ export function useTranscription() {
 				setProgress(100)
 
 				toast({
-					title: '转录完成',
-					description: '已在浏览器内通过 WebGPU 完成转录',
+					title: t('toasts.transcriptionCompleteTitle'),
+					description: t('toasts.transcriptionCompleteDescriptionWebgpu'),
 				})
 
 				return transcriptionResult
 			} catch (error) {
 				console.error('WebGPU transcription error:', error)
 				toast({
-					title: '转录失败',
-					description: error instanceof Error ? error.message : 'WebGPU 转录失败',
+					title: t('toasts.transcriptionFailedTitle'),
+					description:
+						error instanceof Error && error.message
+							? error.message
+							: t('toasts.transcriptionFailedDescription'),
 					variant: 'destructive',
 				})
 				throw error
@@ -859,7 +891,7 @@ export function useTranscription() {
 				}
 			}
 		},
-		[addToHistory, convertToWavArrayBuffer, ensureWorker, language, outputFormat, prompt, toast, webgpuModel]
+    [addToHistory, convertToWavArrayBuffer, ensureWorker, language, outputFormat, prompt, t, toast, webgpuModel]
 	)
 
 	const transcribe = useCallback(
