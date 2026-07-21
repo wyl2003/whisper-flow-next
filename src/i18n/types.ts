@@ -19,6 +19,7 @@ export interface Messages {
     github: string
     settings: string
     back: string
+    switchLanguage: string
   }
   home: {
     headline: string

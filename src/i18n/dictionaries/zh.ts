@@ -32,6 +32,7 @@ export const zh: Messages = {
     github: "GitHub",
     settings: "API 设置",
     back: "返回",
+    switchLanguage: "English",
   },
   home: {
     headline: "Whisper Flow 免费语音转文字",

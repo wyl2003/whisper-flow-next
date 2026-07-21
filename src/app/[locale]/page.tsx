@@ -5,6 +5,7 @@ import { Github, Settings } from "lucide-react"
 import { Uploader } from "@/components/uploader"
 import { TranscriptionSettings } from "@/components/transcription-settings"
 import { History } from "@/components/history"
+import { LanguageSwitcher } from "@/components/language-switcher"
 import { useI18n } from "@/components/i18n-provider"
 
 export default function HomePage() {
@@ -27,6 +28,7 @@ export default function HomePage() {
             <Github className="w-4 h-4" />
             {t("navigation.github")}
           </Link>
+          <LanguageSwitcher />
           <Link
             href={settingsHref}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

@@ -30,6 +30,7 @@ export const en: Messages = {
     github: "GitHub",
     settings: "API Settings",
     back: "Back",
+    switchLanguage: "中文",
   },
   home: {
     headline: "Whisper Flow – Free Speech-to-Text",
