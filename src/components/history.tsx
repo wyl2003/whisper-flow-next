@@ -19,6 +19,41 @@ import {
 } from "@/components/ui/select"
 import { useI18n } from "@/components/i18n-provider"
 
+const languages = {
+  auto: "自动检测",
+  "zh-cn": "中文（简体）",
+  "zh-tw": "中文（繁体）",
+  zh: "中文（不转换）",
+  en: "英文",
+  ja: "日文",
+  ko: "韩文",
+  fr: "法文",
+  de: "德文",
+  es: "西班牙文",
+  ru: "俄文",
+  it: "意大利文",
+  pt: "葡萄牙文",
+  nl: "荷兰文",
+  pl: "波兰文",
+  tr: "土耳其文",
+  ar: "阿拉伯文",
+  th: "泰文",
+  vi: "越南文",
+  hi: "印地文",
+}
+
+const outputFormats = [
+  { value: "text", label: "纯文本" },
+  { value: "srt", label: "SRT 字幕" },
+  { value: "vtt", label: "VTT 字幕" },
+  { value: "json", label: "JSON" },
+]
+
+const modeLabels = {
+  api: "云端 API",
+  webgpu: "本地 WebGPU",
+}
+
 export function History() {
   const { history, removeFromHistory, currency } = useTranscriptionStore()
   const [exportFormats, setExportFormats] = useState<{ [key: string]: string }>({})
